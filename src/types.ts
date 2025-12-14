@@ -37,3 +37,41 @@ export type LookupResult = {
   risk: 'Bajo' | 'Medio' | 'Alto';
   badge?: string;
 };
+
+export type CitizenStatus = 'En ciudad' | 'Buscado' | 'En custodia';
+
+export type Citizen = {
+  id: string;
+  name: string;
+  status: CitizenStatus;
+  flags?: string[];
+  priors: string[];
+  lastSeen: string;
+  affiliation?: string;
+  notes?: string;
+};
+
+export type ChargeClass = 'Falta' | 'Delito' | 'Grave';
+
+export type Charge = {
+  code: string;
+  title: string;
+  class: ChargeClass;
+  fine: number;
+  time: number;
+  points?: number;
+  description: string;
+};
+
+export type PenalCodeCategory = {
+  id: string;
+  label: string;
+  color: string;
+  charges: Charge[];
+};
+
+export type ReportDraft = {
+  citizen?: Citizen;
+  charges: Charge[];
+  notes: string;
+};

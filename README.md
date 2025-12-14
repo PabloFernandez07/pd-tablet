@@ -2,6 +2,24 @@
 
 Tablet web diseñada para servidores de rol (FiveM) con foco en rendimiento, validaciones y un diseño moderno.
 
+## Instalación rápida
+Si ya tienes el repositorio clonado, instala dependencias y arranca el servidor de desarrollo:
+
+```bash
+npm install
+npm run dev
+```
+
+Para crear el proyecto desde cero (React + Vite + Tailwind + TypeScript), estos son los pasos base que se usaron:
+
+```bash
+npm create vite@latest pd-tablet -- --template react-ts
+cd pd-tablet
+npm install -D tailwindcss postcss autoprefixer
+npx tailwindcss init -p
+npm install
+```
+
 ## Scripts disponibles
 - `npm run dev`: inicia el servidor de desarrollo de Vite.
 - `npm run build`: valida tipos y construye el bundle.
