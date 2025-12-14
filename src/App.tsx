@@ -6,18 +6,27 @@ import { IncidentFormCard } from './components/IncidentForm';
 import { LookupPanel } from './components/LookupPanel';
 import { StatusCards } from './components/StatusCards';
 import { TabletShell } from './components/TabletShell';
-import { caseFiles, initialIncident, officers } from './data/mockData';
-import { CaseFile, IncidentForm, TimelineEvent } from './types';
+import { CitizenDirectory } from './components/CitizenDirectory';
+import { PenalCodeBoard } from './components/PenalCodeBoard';
+import { ReportBuilder } from './components/ReportBuilder';
+import { caseFiles, citizens, initialIncident, initialReportDraft, officers, penalCode } from './data/mockData';
+import { CaseFile, Charge, Citizen, IncidentForm, ReportDraft, TimelineEvent } from './types';
 
 interface State {
   cases: CaseFile[];
   timeline: TimelineEvent[];
+  report: ReportDraft;
 }
 
 type Action =
   | { type: 'toggle'; id: string }
   | { type: 'incident'; payload: IncidentForm }
-  | { type: 'lookup'; payload: string };
+  | { type: 'lookup'; payload: string }
+  | { type: 'setCitizen'; payload: Citizen }
+  | { type: 'addCharge'; payload: Charge }
+  | { type: 'removeCharge'; payload: string }
+  | { type: 'updateNotes'; payload: string }
+  | { type: 'finalizeReport' };
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
@@ -72,6 +81,77 @@ function reducer(state: State, action: Action): State {
         ].slice(0, 10)
       };
     }
+    case 'setCitizen': {
+      return {
+        ...state,
+        report: { ...state.report, citizen: action.payload },
+        timeline: [
+          {
+            id: crypto.randomUUID(),
+            time: 'Ahora',
+            label: 'Ciudadano seleccionado',
+            description: `${action.payload.name} (${action.payload.id})`,
+            tone: 'info'
+          },
+          ...state.timeline
+        ].slice(0, 10)
+      };
+    }
+    case 'addCharge': {
+      const exists = state.report.charges.some((charge) => charge.code === action.payload.code);
+      const nextCharges = exists ? state.report.charges : [...state.report.charges, action.payload];
+      return {
+        ...state,
+        report: { ...state.report, charges: nextCharges },
+        timeline: exists
+          ? state.timeline
+          : [
+              {
+                id: crypto.randomUUID(),
+                time: 'Ahora',
+                label: 'Cargo agregado',
+                description: `${action.payload.code} · ${action.payload.title}`,
+                tone: 'warning'
+              },
+              ...state.timeline
+            ].slice(0, 10)
+      };
+    }
+    case 'removeCharge': {
+      return {
+        ...state,
+        report: {
+          ...state.report,
+          charges: state.report.charges.filter((charge) => charge.code !== action.payload)
+        }
+      };
+    }
+    case 'updateNotes': {
+      return {
+        ...state,
+        report: { ...state.report, notes: action.payload.slice(0, 480) }
+      };
+    }
+    case 'finalizeReport': {
+      if (!state.report.citizen || state.report.charges.length === 0) return state;
+      const totalFine = state.report.charges.reduce((acc, charge) => acc + charge.fine, 0);
+      const totalTime = state.report.charges.reduce((acc, charge) => acc + charge.time, 0);
+
+      return {
+        ...state,
+        report: { ...state.report, charges: [], notes: '' },
+        timeline: [
+          {
+            id: crypto.randomUUID(),
+            time: 'Ahora',
+            label: 'Reporte guardado',
+            description: `${state.report.citizen.name} · ${state.report.charges.length} cargos · ${totalTime} min · $${totalFine}`,
+            tone: 'success'
+          },
+          ...state.timeline
+        ].slice(0, 10)
+      };
+    }
     default:
       return state;
   }
@@ -101,7 +181,8 @@ const initialState: State = {
       description: 'Patrulla K-375 reporta altercado en distrito sur',
       tone: 'warning'
     }
-  ]
+  ],
+  report: initialReportDraft
 };
 
 function OfficersBar(): JSX.Element {
@@ -138,15 +219,29 @@ export default function App(): JSX.Element {
         <div className="space-y-6">
           <OfficersBar />
           <StatusCards />
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-            <div className="xl:col-span-2 space-y-4">
+          <div className="grid grid-cols-1 2xl:grid-cols-4 gap-4">
+            <div className="2xl:col-span-2 space-y-4">
               <CaseTable cases={openCases} onToggle={(id) => dispatch({ type: 'toggle', id })} />
               <IncidentFormCard
                 defaults={initialIncident}
                 onSubmit={(incident) => dispatch({ type: 'incident', payload: incident })}
               />
+              <ReportBuilder
+                citizen={state.report.citizen}
+                charges={state.report.charges}
+                notes={state.report.notes}
+                onNotesChange={(value) => dispatch({ type: 'updateNotes', payload: value })}
+                onRemoveCharge={(code) => dispatch({ type: 'removeCharge', payload: code })}
+                onFinalize={() => dispatch({ type: 'finalizeReport' })}
+              />
             </div>
-            <div className="space-y-4">
+            <div className="2xl:col-span-2 grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <CitizenDirectory
+                citizens={citizens}
+                selectedId={state.report.citizen?.id}
+                onSelect={(citizen) => dispatch({ type: 'setCitizen', payload: citizen })}
+              />
+              <PenalCodeBoard categories={penalCode} onAdd={(charge) => dispatch({ type: 'addCharge', payload: charge })} />
               <LookupPanel onSelect={(item) => dispatch({ type: 'lookup', payload: item.name })} />
               <ActivityTimeline events={state.timeline} />
             </div>
